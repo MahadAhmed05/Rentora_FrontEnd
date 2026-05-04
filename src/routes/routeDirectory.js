@@ -23,12 +23,14 @@ export const routeDirectory = {
   dashboard: {
     raw: "/dashboard",
     auth_required: true,
+    layout: true,
     component: Dashboard,
   },
   owner: {
     raw: "/owner",
     auth_required: true,
     ownerOnly: true,
+    layout: true,
     component: OwnerDashboard,
     children: [
       { index: true, redirectTo: "products" },
@@ -40,6 +42,7 @@ export const routeDirectory = {
     raw: "/renter",
     auth_required: true,
     renterOnly: true,
+    layout: true,
     component: RenterDashboard,
   },
   notFound: {

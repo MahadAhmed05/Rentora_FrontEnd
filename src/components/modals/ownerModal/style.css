@@ -1,0 +1,66 @@
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+  }
+  
+  .modal-box {
+    background: white;
+    width: 420px;
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .owner-card {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .owner-row {
+    font-size: 14px;
+  }
+  
+  .modal-error {
+    color: red;
+    font-size: 13px;
+  }
+  
+  .modal-subtle {
+    font-size: 13px;
+    color: #666;
+  }
+  
+  /* WHATSAPP BUTTON */
+  .whatsapp-btn {
+    display: block;
+    margin-top: 15px;
+    text-align: center;
+    padding: 10px;
+    background: #25D366;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.2s;
+  }
+  
+  .whatsapp-btn:hover {
+    background: #1ebe5d;
+  }
+  
+  .close-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    background: #151717;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+  }

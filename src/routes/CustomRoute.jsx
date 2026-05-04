@@ -1,8 +1,16 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
+import MainLayout from "../layout/MainLayout";
 
 export const CustomRoute = ({ route }) => {
-  const { auth_required, ownerOnly, renterOnly, component: Component, raw } = route;
+  const {
+    auth_required,
+    ownerOnly,
+    renterOnly,
+    layout,
+    component: Component,
+    raw,
+  } = route;
   const { isAuthenticated, user } = useAuth();
 
   if (auth_required && !isAuthenticated) {
@@ -21,5 +29,11 @@ export const CustomRoute = ({ route }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  return <Component />;
+  const routeElement = <Component />;
+
+  if (layout) {
+    return <MainLayout>{routeElement}</MainLayout>;
+  }
+
+  return routeElement;
 };

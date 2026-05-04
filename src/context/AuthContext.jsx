@@ -1,7 +1,6 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { authStorage } from "../utils/storage";
-
-const AuthContext = createContext(null);
+import { AuthContext } from "./AuthContextObject";
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(authStorage.getToken());
@@ -32,10 +31,4 @@ export const AuthProvider = ({ children }) => {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
 };

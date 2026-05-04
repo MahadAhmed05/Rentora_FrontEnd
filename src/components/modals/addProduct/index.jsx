@@ -1,73 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAddProductMutation } from "../../../store/api/productsApi";
 import { env } from "../../../config/env";
+
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import "./style.css";
 
-const CATEGORY_OPTIONS = ["Electronics", "Makeup", "Others"];
+// 🔥 Zod Schema
+const productSchema = z.object({
+  name: z.string().min(2, "Product name is required"),
+  category: z.enum(["Electronics", "Makeup", "Others"]),
+  description: z.string().min(5, "Description is required"),
+  pricePerDay: z
+    .number({ invalid_type_error: "Price is required" })
+    .positive("Price must be greater than 0"),
+  location: z.string().min(2, "Location is required"),
+});
 
 const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
   const [addProduct, { isLoading }] = useAddProductMutation();
-  const [form, setForm] = useState({
-    name: "",
-    category: "Electronics",
-    description: "",
-    pricePerDay: "",
-    location: "",
-  });
 
   const [imageFile, setImageFile] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [apiError, setApiError] = useState("");
   const [step, setStep] = useState("");
+
+  // RHF
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      category: "Electronics",
+    },
+  });
+
+  // 🧹 Revoke object URL on unmount or when preview changes — prevents memory leaks
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
-    setForm((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-    setErrorMessage("");
+  // 📸 Image preview handler
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (preview) URL.revokeObjectURL(preview); // cleanup previous
+    setImageFile(file);
+    setPreview(URL.createObjectURL(file));
   };
 
-  const getClientValidationError = () => {
-    if (!form.name.trim()) return "Product name is required.";
-    if (!CATEGORY_OPTIONS.includes(form.category)) return "Please select a valid category.";
-    if (!form.description.trim()) return "Description is required.";
-    if (!form.location.trim()) return "Location is required.";
-
-    const price = Number(form.pricePerDay);
-    if (!Number.isFinite(price) || price <= 0) return "Price per day must be a number greater than 0.";
-
-    if (!imageFile) return "Please select an image.";
-
-    return "";
+  // ❌ Remove selected image
+  const handleRemoveImage = () => {
+    if (preview) URL.revokeObjectURL(preview);
+    setImageFile(null);
+    setPreview(null);
   };
 
-  const formatServerValidation = (err) => {
-    const msg = err?.data?.message;
-    const errors = err?.data?.errors;
-
-    if (typeof errors === "string") return errors;
-    if (Array.isArray(errors) && errors.length) return errors.join("\n");
-    if (errors && typeof errors === "object") {
-      // common shapes: { field: "msg" } or { field: ["msg1","msg2"] }
-      return Object.entries(errors)
-        .map(([key, value]) => {
-          if (Array.isArray(value)) return `${key}: ${value.join(", ")}`;
-          return `${key}: ${String(value)}`;
-        })
-        .join("\n");
-    }
-
-    return msg || "";
-  };
-
+  // ☁️ Cloudinary upload — now throws with a clear message on failure
   const uploadImageToCloudinary = async () => {
     const CLOUD_NAME = env.cloudinaryCloudName;
     const UPLOAD_PRESET = env.cloudinaryUploadPreset;
-    if (!CLOUD_NAME || !UPLOAD_PRESET) {
-      throw new Error("Cloudinary config missing. Add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in .env.");
-    }
 
     const data = new FormData();
     data.append("file", imageFile);
@@ -75,29 +77,28 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
 
     const res = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-      {
-        method: "POST",
-        body: data,
-      }
+      { method: "POST", body: data }
     );
+
     if (!res.ok) {
       throw new Error("Image upload failed. Please try again.");
     }
 
     const result = await res.json();
-    if (!result?.secure_url) {
-      throw new Error("Cloudinary did not return image URL.");
+
+    if (!result.secure_url) {
+      throw new Error("Image upload failed. Please try again.");
     }
+
     return result.secure_url;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMessage("");
+  // 🚀 Submit
+  const onSubmit = async (data) => {
+    setApiError("");
 
-    const clientError = getClientValidationError();
-    if (clientError) {
-      setErrorMessage(clientError);
+    if (!imageFile) {
+      setApiError("Please select an image");
       return;
     }
 
@@ -105,24 +106,29 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
       setStep("Uploading image...");
       const imageUrl = await uploadImageToCloudinary();
 
+      setStep("Saving product...");
+
       const payload = {
-        name: form.name.trim(),
-        category: form.category,
-        description: form.description.trim(),
-        pricePerDay: Number(form.pricePerDay),
-        location: form.location.trim(),
+        ...data,
+        pricePerDay: Number(data.pricePerDay),
         imageUrl,
       };
 
-      setStep("Saving product...");
       await addProduct(payload).unwrap();
+
+      reset();
+      handleRemoveImage();
       onSuccess?.();
       onClose();
     } catch (err) {
-      const detailed = formatServerValidation(err);
-      setErrorMessage(
-        detailed || err?.data?.message || err?.message || "Validation failed. Please check fields and try again."
-      );
+      // Cloudinary throws a plain Error; RTK Query throws { status, data }
+      if (err instanceof Error) {
+        setApiError(err.message);
+      } else if (err?.status === "FETCH_ERROR") {
+        setApiError("Network error. Please try again.");
+      } else {
+        setApiError(err?.data?.message || "Something went wrong.");
+      }
     } finally {
       setStep("");
     }
@@ -131,67 +137,77 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-box">
+
         <h2>Add Product</h2>
-        {errorMessage && <p className="modal-error">{errorMessage}</p>}
+
+        {apiError && <p className="modal-error">{apiError}</p>}
         {step && <p className="modal-subtle">{step}</p>}
 
-        <form onSubmit={handleSubmit} className="modal-form">
+        <form className="modal-form" onSubmit={handleSubmit(onSubmit)}>
 
-          <input
-            name="name"
-            placeholder="Product Name"
-            value={form.name}
-            onChange={handleChange}
-            required
-          />
+          {/* NAME */}
+          <input placeholder="Product Name" {...register("name")} />
+          <span className="field-error">{errors.name?.message}</span>
 
-          <select name="category" value={form.category} onChange={handleChange}>
+          {/* CATEGORY */}
+          <select {...register("category")}>
             <option value="Electronics">Electronics</option>
             <option value="Makeup">Makeup</option>
             <option value="Others">Others</option>
           </select>
 
-          <textarea
-            name="description"
-            placeholder="Description"
-            value={form.description}
-            onChange={handleChange}
-            required
-          />
+          {/* DESCRIPTION */}
+          <textarea placeholder="Description" {...register("description")} />
+          <span className="field-error">{errors.description?.message}</span>
 
+          {/* PRICE */}
           <input
             type="number"
-            name="pricePerDay"
             placeholder="Price per day"
-            value={form.pricePerDay}
-            onChange={handleChange}
-            required
+            {...register("pricePerDay", { valueAsNumber: true })}
           />
+          <span className="field-error">{errors.pricePerDay?.message}</span>
 
-          <input
-            name="location"
-            placeholder="Location"
-            value={form.location}
-            onChange={handleChange}
-            required
-          />
+          {/* LOCATION */}
+          <input placeholder="Location" {...register("location")} />
+          <span className="field-error">{errors.location?.message}</span>
 
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              setImageFile(e.target.files?.[0] || null);
-              setErrorMessage("");
-            }}
-            required
-          />
+          {/* IMAGE — toggle between upload zone and preview */}
+          {!preview ? (
+            <label className="custum-file-upload">
+              <div className="icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M10 1L3 8v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H10z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </div>
+              <div className="text">
+                <span>Click to upload image</span>
+              </div>
+              <input type="file" accept="image/*" onChange={handleImageChange} />
+            </label>
+          ) : (
+            <div className="preview-container">
+              <img src={preview} className="preview-img" alt="preview" />
+              <button
+                type="button"
+                className="remove-image-btn"
+                onClick={handleRemoveImage}
+                aria-label="Remove image"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
+          {/* ACTIONS */}
           <div className="modal-actions">
             <button type="button" onClick={onClose}>
               Cancel
             </button>
-
-            <button type="submit" disabled={isLoading}>
+            <button type="submit" disabled={isLoading || isSubmitting}>
               {isLoading ? "Saving..." : "Add Product"}
             </button>
           </div>

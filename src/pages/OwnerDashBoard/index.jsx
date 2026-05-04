@@ -1,15 +1,3 @@
-// const Products = () => {
-//   return (
-//     <div className="page">
-//       <h1>My Products</h1>
-//       <p>Owner products page placeholder.</p>
-//     </div>
-//   );
-// };
-
-// export default Products;
-
-
 import { Tabs, Tab, Box } from "@mui/material";
 import { useLocation, useNavigate, Outlet } from "react-router-dom";
 

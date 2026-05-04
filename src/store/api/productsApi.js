@@ -35,7 +35,19 @@ export const productsApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["Products"],
     }),
+    deleteProduct: builder.mutation({
+      query: (id) => ({
+        url: `/products/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Products", "MyProducts"],
+    }),
   }),
 });
 
-export const { useGetProductsQuery, useGetMyProductsQuery, useAddProductMutation } = productsApi;
+export const {
+  useGetProductsQuery,
+  useGetMyProductsQuery,
+  useAddProductMutation,
+  useDeleteProductMutation,
+} = productsApi;

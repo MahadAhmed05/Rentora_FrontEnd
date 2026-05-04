@@ -1,27 +1,32 @@
-.register-page {
+  .register-page {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     background: #f5f5f5;
   }
   
+  /* FORM CARD */
   .form {
     display: flex;
     flex-direction: column;
     gap: 10px;
     background-color: #ffffff;
     padding: 30px;
-    width: 400px;
+    width: 420px;
     border-radius: 20px;
     font-family: system-ui, sans-serif;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   }
   
+  /* LABELS */
   .flex-column > label {
     color: #151717;
     font-weight: 600;
+    font-size: 14px;
   }
   
+  /* INPUT BOX */
   .inputForm {
     border: 1.5px solid #ecedec;
     border-radius: 10px;
@@ -30,23 +35,42 @@
     align-items: center;
     padding-left: 10px;
     transition: 0.2s;
+    background: #fff;
   }
   
+  /* INPUT FIELD */
   .input {
     margin-left: 10px;
     border: none;
     width: 100%;
     height: 100%;
+    font-size: 14px;
   }
   
   .input:focus {
     outline: none;
   }
   
+  /* FOCUS EFFECT (PRO LOOK) */
   .inputForm:focus-within {
-    border: 1.5px solid #2d79f3;
+    border: 1.5px solid #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
   }
   
+  /* PASSWORD TOGGLE */
+  .password-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .toggle-password {
+    cursor: pointer;
+    margin-right: 10px;
+    font-size: 18px;
+  }
+  
+  /* ROLE SECTION */
   .role-container {
     display: flex;
     gap: 20px;
@@ -56,9 +80,11 @@
   .radio-row {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
+    font-size: 14px;
   }
   
+  /* BUTTON */
   .button-submit {
     margin-top: 15px;
     background-color: #151717;
@@ -67,12 +93,20 @@
     height: 50px;
     border-radius: 10px;
     cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
   }
   
   .button-submit:hover {
     background-color: #252727;
   }
   
+  .button-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  /* TEXT */
   .p {
     text-align: center;
     font-size: 14px;
@@ -81,8 +115,10 @@
   .span {
     color: #2d79f3;
     cursor: pointer;
+    font-size: 14px;
   }
   
+  /* ERROR & ALERTS */
   .alert {
     padding: 10px;
     border-radius: 8px;
@@ -94,7 +130,9 @@
     color: #721c24;
   }
   
+  /* FIELD ERROR */
   .field-error {
     color: red;
     font-size: 12px;
+    margin-top: -5px;
   }

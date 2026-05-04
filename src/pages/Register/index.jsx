@@ -1,273 +1,176 @@
-// import { useState } from "react";
-// import { Link, useNavigate } from "react-router-dom";
-// import { authService } from "../../services/authService";
-// import { ROLES } from "../../constants";
-// import { getRegisterErrors } from "../../utils/validation";
-
-// const Register = () => {
-//   const navigate = useNavigate();
-//   const [formData, setFormData] = useState({
-//     name: "",
-//     email: "",
-//     phone: "",
-//     password: "",
-//     role: "",
-//   });
-//   const [errors, setErrors] = useState({});
-//   const [apiMessage, setApiMessage] = useState("");
-//   const [isLoading, setIsLoading] = useState(false);
-
-//   const handleChange = (event) => {
-//     const { name, value } = event.target;
-//     setFormData((prev) => ({ ...prev, [name]: value }));
-//     setErrors((prev) => ({ ...prev, [name]: "" }));
-//     setApiMessage("");
-//   };
-
-//   const handleSubmit = async (event) => {
-//     event.preventDefault();
-//     const validationErrors = getRegisterErrors(formData);
-//     setErrors(validationErrors);
-//     if (Object.keys(validationErrors).length > 0) return;
-
-//     setIsLoading(true);
-//     setApiMessage("");
-
-//     const result = await authService.register(formData);
-//     setIsLoading(false);
-
-//     if (!result.ok) {
-//       setApiMessage(result.message);
-//       return;
-//     }
-
-//     navigate("/login", {
-//       state: { message: "Account created successfully. Please login." },
-//     });
-//   };
-
-//   return (
-//     <div className="auth-page">
-//       <form className="auth-card" onSubmit={handleSubmit}>
-//         <h1>Register</h1>
-//         <p>Create your Rentora account.</p>
-
-//         {apiMessage ? <div className="alert error">{apiMessage}</div> : null}
-//         {errors.role ? <div className="alert error">{errors.role}</div> : null}
-
-//         <label>
-//           Full Name
-//           <input name="name" value={formData.name} onChange={handleChange} />
-//           {errors.name ? <span className="field-error">{errors.name}</span> : null}
-//         </label>
-
-//         <label>
-//           Email
-//           <input name="email" type="email" value={formData.email} onChange={handleChange} />
-//           {errors.email ? <span className="field-error">{errors.email}</span> : null}
-//         </label>
-
-//         <label>
-//           Phone
-//           <input name="phone" value={formData.phone} onChange={handleChange} />
-//           {errors.phone ? <span className="field-error">{errors.phone}</span> : null}
-//         </label>
-
-//         <label>
-//           Password
-//           <input name="password" type="password" value={formData.password} onChange={handleChange} />
-//           {errors.password ? <span className="field-error">{errors.password}</span> : null}
-//         </label>
-
-//         <fieldset className="role-fieldset">
-//           <legend>Register as</legend>
-//           <label className="radio-row">
-//             <input
-//               type="radio"
-//               name="role"
-//               value={ROLES.OWNER}
-//               checked={formData.role === ROLES.OWNER}
-//               onChange={handleChange}
-//             />
-//             Owner
-//           </label>
-//           <label className="radio-row">
-//             <input
-//               type="radio"
-//               name="role"
-//               value={ROLES.RENTER}
-//               checked={formData.role === ROLES.RENTER}
-//               onChange={handleChange}
-//             />
-//             Renter
-//           </label>
-//         </fieldset>
-
-//         <button type="submit" disabled={isLoading}>
-//           {isLoading ? "Creating account..." : "Create Account"}
-//         </button>
-
-//         <p className="link-text">
-//           Already have an account? <Link to="/login">Login</Link>
-//         </p>
-//       </form>
-//     </div>
-//   );
-// };
-
-// export default Register;
-
-
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ROLES } from "../../constants";
-import { getRegisterErrors } from "../../utils/validation";
 import { useRegisterMutation } from "../../store/api/authApi";
+
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import "./style.css";
+
+// 🔥 Zod Schema
+const registerSchema = z.object({
+  name: z.string().min(2, "Name is required"),
+  email: z.string().email("Enter a valid email"),
+  phone: z
+    .string()
+    .min(10, "Phone must be at least 10 digits")
+    .max(15, "Phone is too long"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum([ROLES.OWNER, ROLES.RENTER], {
+    errorMap: () => ({ message: "Please select a role" }),
+  }),
+});
 
 const Register = () => {
   const navigate = useNavigate();
   const [registerUser, { isLoading }] = useRegisterMutation();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    role: "",
+  const [apiMessage, setApiMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(registerSchema),
   });
 
-  const [errors, setErrors] = useState({});
-  const [apiMessage, setApiMessage] = useState("");
+  const selectedRole = watch("role");
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+  // submit
+  const onSubmit = async (data) => {
     setApiMessage("");
-  };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    const validationErrors = getRegisterErrors(formData);
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
-
-    setApiMessage("");
     try {
-      await registerUser(formData).unwrap();
+      await registerUser(data).unwrap();
+
       navigate("/login", {
         state: { message: "Account created successfully. Please login." },
       });
     } catch (error) {
-      setApiMessage(error?.data?.message || "Failed to create account. Please try again.");
+      if (error?.status === "FETCH_ERROR") {
+        setApiMessage("Network error. Please try again.");
+      } else {
+        setApiMessage(error?.data?.message || "Failed to create account.");
+      }
     }
   };
 
   return (
     <div className="register-page">
-      <form className="form" onSubmit={handleSubmit}>
-        
+      <form className="form" onSubmit={handleSubmit(onSubmit)}>
+        {/* API ERROR */}
         {apiMessage && <div className="alert error">{apiMessage}</div>}
-        {errors.role && <div className="alert error">{errors.role}</div>}
 
-        {/* Name */}
+        {/* NAME */}
         <div className="flex-column">
           <label>Full Name</label>
         </div>
+
         <div className="inputForm">
           <input
-            name="name"
             className="input"
             placeholder="Enter your name"
-            value={formData.name}
-            onChange={handleChange}
+            {...register("name")}
           />
         </div>
-        {errors.name && <span className="field-error">{errors.name}</span>}
+        <span className="field-error">{errors.name?.message}</span>
 
-        {/* Email */}
+        {/* EMAIL */}
         <div className="flex-column">
           <label>Email</label>
         </div>
+
         <div className="inputForm">
           <input
             type="email"
-            name="email"
             className="input"
             placeholder="Enter your Email"
-            value={formData.email}
-            onChange={handleChange}
+            {...register("email")}
           />
         </div>
-        {errors.email && <span className="field-error">{errors.email}</span>}
+        <span className="field-error">{errors.email?.message}</span>
 
-        {/* Phone */}
+        {/* PHONE */}
         <div className="flex-column">
           <label>Phone</label>
         </div>
+
         <div className="inputForm">
           <input
-            name="phone"
             className="input"
             placeholder="Enter your phone"
-            value={formData.phone}
-            onChange={handleChange}
+            {...register("phone")}
           />
         </div>
-        {errors.phone && <span className="field-error">{errors.phone}</span>}
+        <span className="field-error">{errors.phone?.message}</span>
 
-        {/* Password */}
+        {/* PASSWORD */}
         <div className="flex-column">
           <label>Password</label>
         </div>
-        <div className="inputForm">
+
+        <div className="inputForm password-wrapper">
           <input
-            type="password"
-            name="password"
+            type={showPassword ? "text" : "password"}
             className="input"
             placeholder="Enter your Password"
-            value={formData.password}
-            onChange={handleChange}
+            {...register("password")}
           />
-        </div>
-        {errors.password && <span className="field-error">{errors.password}</span>}
 
-        {/* Role */}
+          <span
+            className="toggle-password"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? "🙈" : "👁️"}
+          </span>
+        </div>
+        <span className="field-error">{errors.password?.message}</span>
+
+        {/* ROLE */}
         <div className="flex-column">
           <label>Register as</label>
         </div>
+
         <div className="role-container">
           <label className="radio-row">
             <input
               type="radio"
-              name="role"
               value={ROLES.OWNER}
-              checked={formData.role === ROLES.OWNER}
-              onChange={handleChange}
+              checked={selectedRole === ROLES.OWNER}
+              onChange={() => setValue("role", ROLES.OWNER)}
             />
             Owner
           </label>
+
           <label className="radio-row">
             <input
               type="radio"
-              name="role"
               value={ROLES.RENTER}
-              checked={formData.role === ROLES.RENTER}
-              onChange={handleChange}
+              checked={selectedRole === ROLES.RENTER}
+              onChange={() => setValue("role", ROLES.RENTER)}
             />
             Renter
           </label>
         </div>
 
-        {/* Submit */}
-        <button className="button-submit" type="submit" disabled={isLoading}>
+        <span className="field-error">{errors.role?.message}</span>
+
+        {/* SUBMIT */}
+        <button
+          className="button-submit"
+          type="submit"
+          disabled={isSubmitting || isLoading}
+        >
           {isLoading ? "Creating account..." : "Create Account"}
         </button>
 
-        {/* Login */}
+        {/* LOGIN */}
         <p className="p">
           Already have an account?{" "}
           <Link to="/login" className="span">
