@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { generateProductDescription } from "../../../services/openrouter";
 import "./style.css";
 
 // 🔥 Zod Schema
@@ -26,12 +27,15 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
   const [preview, setPreview] = useState(null);
   const [apiError, setApiError] = useState("");
   const [step, setStep] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // RHF
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(productSchema),
@@ -40,21 +44,35 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
     },
   });
 
-  // 🧹 Revoke object URL on unmount or when preview changes — prevents memory leaks
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [preview]);
+  const watchedName = watch("name");
+  const watchedCategory = watch("category");
 
-  if (!isOpen) return null;
+// 🧹 Revoke object URL on unmount or when preview changes
+useEffect(() => {
+  return () => {
+    if (preview) URL.revokeObjectURL(preview);
+  };
+}, [preview]);
+
+// 🔒 Prevent background scroll when modal is open   <-- ADD HERE
+useEffect(() => {
+  if (isOpen) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
+  }
+  return () => {
+    document.body.style.overflow = "";
+  };
+}, [isOpen]);
+
+if (!isOpen) return null;
 
   // 📸 Image preview handler
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (preview) URL.revokeObjectURL(preview); // cleanup previous
+    if (preview) URL.revokeObjectURL(preview);
     setImageFile(file);
     setPreview(URL.createObjectURL(file));
   };
@@ -65,8 +83,29 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
     setImageFile(null);
     setPreview(null);
   };
+  
 
-  // ☁️ Cloudinary upload — now throws with a clear message on failure
+  // 🤖 AI Description Generator
+  const handleGenerateDescription = async () => {
+    if (!watchedName || watchedName.trim().length < 2) {
+      setApiError("Please enter a product name first.");
+      return;
+    }
+
+    setApiError("");
+    setIsGenerating(true);
+
+    try {
+      const description = await generateProductDescription(watchedName, watchedCategory);
+      setValue("description", description, { shouldValidate: true });
+    } catch (err) {
+      setApiError(err.message || "Failed to generate description.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // ☁️ Cloudinary upload
   const uploadImageToCloudinary = async () => {
     const CLOUD_NAME = env.cloudinaryCloudName;
     const UPLOAD_PRESET = env.cloudinaryUploadPreset;
@@ -80,15 +119,10 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
       { method: "POST", body: data }
     );
 
-    if (!res.ok) {
-      throw new Error("Image upload failed. Please try again.");
-    }
+    if (!res.ok) throw new Error("Image upload failed. Please try again.");
 
     const result = await res.json();
-
-    if (!result.secure_url) {
-      throw new Error("Image upload failed. Please try again.");
-    }
+    if (!result.secure_url) throw new Error("Image upload failed. Please try again.");
 
     return result.secure_url;
   };
@@ -121,7 +155,6 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
       onSuccess?.();
       onClose();
     } catch (err) {
-      // Cloudinary throws a plain Error; RTK Query throws { status, data }
       if (err instanceof Error) {
         setApiError(err.message);
       } else if (err?.status === "FETCH_ERROR") {
@@ -157,13 +190,24 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
           </select>
 
           {/* DESCRIPTION */}
-          <textarea placeholder="Description" {...register("description")} />
+          <div className="description-header">
+            <label className="description-label">Description</label>
+            <button
+              type="button"
+              className="ai-generate-btn"
+              onClick={handleGenerateDescription}
+              disabled={isGenerating}
+            >
+              {isGenerating ? "Generating..." : "✨ Generate with AI"}
+            </button>
+          </div>
+          <textarea placeholder="Write a description or generate with AI..." {...register("description")} />
           <span className="field-error">{errors.description?.message}</span>
 
           {/* PRICE */}
           <input
             type="number"
-            placeholder="Price per day"
+            placeholder="Price per day (PKR)"
             {...register("pricePerDay", { valueAsNumber: true })}
           />
           <span className="field-error">{errors.pricePerDay?.message}</span>
@@ -172,7 +216,7 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
           <input placeholder="Location" {...register("location")} />
           <span className="field-error">{errors.location?.message}</span>
 
-          {/* IMAGE — toggle between upload zone and preview */}
+          {/* IMAGE */}
           {!preview ? (
             <label className="custum-file-upload">
               <div className="icon">
@@ -204,9 +248,7 @@ const AddProductModal = ({ isOpen, onClose, onSuccess }) => {
 
           {/* ACTIONS */}
           <div className="modal-actions">
-            <button type="button" onClick={onClose}>
-              Cancel
-            </button>
+            <button type="button" onClick={onClose}>Cancel</button>
             <button type="submit" disabled={isLoading || isSubmitting}>
               {isLoading ? "Saving..." : "Add Product"}
             </button>

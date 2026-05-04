@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { ROLES } from "../../constants";
 import { useGetProductsQuery } from "../../store/api/productsApi";
+import Tooltip from "@mui/material/Tooltip";
 
 import AddProductModal from "../../components/modals/addProduct";
 import RequestProductModal from "../../components/modals/RequestProduct";
@@ -194,7 +195,10 @@ const Dashboard = () => {
 
                 <div className="card-body">
                   <h3>{item.name}</h3>
-                  <p className="card-description">{item.description}</p>
+                  {/* <p className="card-description">{item.description}</p> */}
+                  <Tooltip title={item.description} arrow placement="bottom">
+                    <p className="card-description">{item.description}</p>
+                  </Tooltip>
 
                   <div className="meta">
                     <span className="meta-location">📍 {item.location}</span>
