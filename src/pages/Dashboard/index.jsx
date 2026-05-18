@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
-import { ROLES } from "../../constants";
+import { ROLES, PRODUCT_CATEGORIES, PRODUCT_LOCATIONS } from "../../constants";
 import { useGetProductsQuery } from "../../store/api/productsApi";
 import Tooltip from "@mui/material/Tooltip";
 
@@ -121,17 +121,25 @@ const Dashboard = () => {
           onChange={handleFilterChange}
         >
           <option value="">All Categories</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Makeup">Makeup</option>
-          <option value="Others">Others</option>
+          {PRODUCT_CATEGORIES.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
         </select>
 
-        <input
+        <select
           name="location"
-          placeholder="Location"
           value={filters.location}
           onChange={handleFilterChange}
-        />
+        >
+          <option value="">All Locations</option>
+          {PRODUCT_LOCATIONS.map((loc) => (
+            <option key={loc} value={loc}>
+              {loc}
+            </option>
+          ))}
+        </select>
 
         <input
           name="minPrice"

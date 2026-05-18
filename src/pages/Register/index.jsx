@@ -6,6 +6,8 @@ import { useRegisterMutation } from "../../store/api/authApi";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 import "./style.css";
 
@@ -123,12 +125,18 @@ const Register = () => {
             {...register("password")}
           />
 
-          <span
+          <button
+            type="button"
             className="toggle-password"
             onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? "🙈" : "👁️"}
-          </span>
+            {showPassword ? (
+              <VisibilityOffIcon fontSize="small" />
+            ) : (
+              <VisibilityIcon fontSize="small" />
+            )}
+          </button>
         </div>
         <span className="field-error">{errors.password?.message}</span>
 

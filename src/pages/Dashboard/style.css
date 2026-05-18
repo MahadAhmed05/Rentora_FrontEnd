@@ -214,6 +214,13 @@
   flex: 1;
 }
 
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto; /* add this */
+  padding-top: 6px; /* replaces the old margin-top: 6px */
+}
+
 .card-body h3 {
   font-size: 15px;
   font-weight: 700;
@@ -249,11 +256,11 @@
   color: var(--accent);
 }
 
-.card-actions {
+/* .card-actions {
   display: flex;
   gap: 8px;
   margin-top: 6px;
-}
+} */
 
 .btn-owner {
   flex: 1;

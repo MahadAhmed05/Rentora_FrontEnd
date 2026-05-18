@@ -65,9 +65,19 @@
   }
   
   .toggle-password {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     margin-right: 10px;
-    font-size: 18px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+  }
+
+  .toggle-password:hover {
+    color: #4f46e5;
   }
   
   /* ROLE SECTION */
